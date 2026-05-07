@@ -39,13 +39,13 @@ target_include_directories(CPS4042
         ./include
 
         # TODO: Change this path to boost include directory on your machine!
-        D:/Work/CPP-LIBS/boost_build_mingw/install/include/boost-1_84
+        D:/Mohammad/University/CPS/ZbZ/CA1/boost_build_mingw/install/include/boost-1_84
 )
 
-# target_link_directories(CPS4042
-#     PRIVATE
-#         D:/Work/CPP-LIBS/boost_build_mingw/install/lib
-# )
+target_link_directories(CPS4042
+    PRIVATE
+        D:/Mohammad/University/CPS/ZbZ/CA1/boost_build_mingw/install/lib
+)
 
 include(GNUInstallDirs)
 
