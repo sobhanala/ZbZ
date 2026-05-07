@@ -23,6 +23,28 @@ public:
     std::int32_t
     loop(Sensors::Vl530x::Gpio& gpio) override
     {
+        gpio;
+
+        static boost::random::mt19937                   generator {42};
+        static boost::random::uniform_int_distribution<> distribution {0, 4000};
+
+        auto distance = static_cast<std::uint16_t>(distribution(generator));
+        auto bytes    = ByteVector<std::uint16_t> {distance};
+
+        auto msb = getByte<1>(bytes);
+        auto lsb = getByte<0>(bytes);
+
+        auto msbUnsigned = static_cast<UByte>(msb);
+        auto lsbUnsigned = static_cast<UByte>(lsb);
+        auto checksum    = static_cast<Byte>(
+          msbUnsigned > lsbUnsigned ? (msbUnsigned - lsbUnsigned)
+                                    : (lsbUnsigned - msbUnsigned));
+
+        node()->i2c.write(msb);
+        node()->i2c.write(lsb);
+        node()->i2c.write(checksum);
+
+        delay(25);
         return 0;
     }
 };

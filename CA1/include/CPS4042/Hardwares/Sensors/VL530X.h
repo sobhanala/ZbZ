@@ -6,6 +6,7 @@
 #include <CPS4042/Wires/Pin.h>
 #include <boost/pfr.hpp>
 #include <iostream>
+#include <queue>
 
 namespace Sensors
 {
@@ -47,21 +48,59 @@ public:
 
         void
         init(Byte address) override
-        {}
+        {
+            (void)address;
+            this->m_started = false;
+        }
 
         void
         write(Byte byte) override
-        {}
+        {
+            m_outbound.push(byte);
+        }
 
         Byte
         read() override
         {
-            return 0;
+            if(this->m_buffer.empty()) return 0;
+
+            auto byte = this->m_buffer.front();
+            this->m_buffer.pop();
+            return byte;
         }
 
         void
         run(Gpio& gpio) override
-        {}
+        {
+            if(!this->m_started)
+            {
+                if(gpio.sda.hasByteToRead())
+                {
+                    auto address = gpio.sda.read();
+                    if(address == static_cast<Byte>(static_cast<UByte>(Vl530x::address) << 1))
+                    {
+                        gpio.sda.write(Bit::One);
+                        this->m_started = true;
+                    }
+                }
+
+                return;
+            }
+
+            while(gpio.sda.hasByteToRead())
+            {
+                this->m_buffer.push(gpio.sda.read());
+            }
+
+            while(!m_outbound.empty())
+            {
+                gpio.sda.write(m_outbound.front());
+                m_outbound.pop();
+            }
+        }
+
+    private:
+        std::queue<Byte> m_outbound;
 
     } mutable i2c {this};
 

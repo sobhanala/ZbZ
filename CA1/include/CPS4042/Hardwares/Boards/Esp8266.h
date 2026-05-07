@@ -6,6 +6,7 @@
 #include <CPS4042/Units/BaudRate.h>
 #include <CPS4042/Wires/Pin.h>
 #include <boost/pfr.hpp>
+#include <queue>
 
 namespace Boards
 {
@@ -67,21 +68,73 @@ public:
 
         void
         init(Byte address) override
-        {}
+        {
+            m_targetAddress = address;
+            m_started       = false;
+            m_addressSent   = false;
+        }
 
         void
         write(Byte byte) override
-        {}
+        {
+            m_outbound.push(byte);
+        }
 
         Byte
         read() override
         {
-            return 0;
+            if(this->m_buffer.empty()) return 0;
+
+            auto byte = this->m_buffer.front();
+            this->m_buffer.pop();
+            return byte;
         }
 
         void
         run(Gpio& gpio) override
-        {}
+        {
+            if(!m_addressSent)
+            {
+                gpio.sda.write(m_targetAddress);
+                m_addressSent = true;
+                return;
+            }
+
+            if(!this->m_started)
+            {
+                if(gpio.sda.hasBitToRead())
+                {
+                    auto ack = gpio.sda.readBit();
+                    if(ack == Bit::One)
+                    {
+                        this->m_started = true;
+                    }
+                    else
+                    {
+                        m_addressSent = false;
+                    }
+                }
+
+                return;
+            }
+
+            while(gpio.sda.hasByteToRead())
+            {
+                auto incoming = gpio.sda.read();
+                this->m_buffer.push(incoming);
+            }
+
+            while(!m_outbound.empty())
+            {
+                gpio.sda.write(m_outbound.front());
+                m_outbound.pop();
+            }
+        }
+
+    private:
+        Byte             m_targetAddress {0};
+        bool             m_addressSent {false};
+        std::queue<Byte> m_outbound;
 
     } mutable i2c {this};
 
