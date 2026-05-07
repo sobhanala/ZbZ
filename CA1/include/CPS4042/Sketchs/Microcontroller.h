@@ -3,9 +3,6 @@
 
 #include <CPS4042/Hardwares/Boards/Esp8266.h>
 #include <CPS4042/Sketchs/AbstractSketch.h>
-#include <CPS4042/Utils/ByteStream.h>
-#include <CPS4042/Utils/Wave.h>
-#include <bitset>
 
 class MicroController : public AbstractSketch<Boards::Esp8266>
 {
@@ -17,16 +14,42 @@ public:
     std::int32_t
     setup(Boards::Esp8266::Gpio& gpio) override
     {
+        (void)gpio;
         std::cout << "esp8266 setup completed." << std::endl;
-        // node()->i2c.init(0x29);
-        // delay(1'000);
         return 0;
     }
 
     std::int32_t
     loop(Boards::Esp8266::Gpio& gpio) override
     {
-        // delay(100);
+        (void)gpio;
+        static UByte nextAddress {0};
+        static bool  waitingForResponse {false};
+        static UByte lastRequest {0};
+
+        if(!waitingForResponse)
+        {
+            auto request = static_cast<Byte>(nextAddress);
+            node()->usart.write(request);
+            lastRequest = nextAddress;
+            std::cout << "[USART] request address: 0x" << std::hex
+                      << static_cast<int>(lastRequest) << std::dec << std::endl;
+
+            waitingForResponse = true;
+        }
+
+        while(node()->usart.isDataAvailable())
+        {
+            auto data = static_cast<UByte>(node()->usart.read());
+            std::cout << "[USART] response address 0x" << std::hex
+                      << static_cast<int>(lastRequest) << " -> data 0x"
+                      << static_cast<int>(data) << std::dec << std::endl;
+
+            nextAddress++;    waitingForResponse = false;
+        
+        }
+
+        delay(10);
         return 0;
     }
 };
