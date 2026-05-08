@@ -5,6 +5,7 @@
 #include <CPS4042/Sketchs/AbstractSketch.h>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <unordered_map>
 
 class HardDisk : public AbstractSketch<Sensors::Usb>
 {
@@ -23,6 +24,19 @@ public:
     std::int32_t
     loop(Sensors::Usb::Gpio& gpio) override
     {
+        (void)gpio;
+        while(node()->usart.isDataAvailable())
+        {
+            auto address = node()->usart.read();
+
+            auto it   = m_storage.find(address);
+            auto data = static_cast<Byte>(0);
+            if(it != m_storage.end()) data = it->second;
+
+            node()->usart.write(data);
+        }
+
+        delay(1);
         return 0;
     }
 

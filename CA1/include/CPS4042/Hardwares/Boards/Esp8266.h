@@ -147,17 +147,39 @@ public:
 
         void
         write(Byte byte) override
-        {}
+        {
+            m_outbound.push(byte);
+        }
 
         Byte
         read() override
         {
-            return 0;
+            if(this->m_buffer.empty()) return 0;
+
+            auto byte = this->m_buffer.front();
+            this->m_buffer.pop();
+            return byte;
         }
 
         void
         run(Gpio& gpio) override
-        {}
+        {
+            gpio.tx.setCanRead(false);
+
+            while(gpio.rx.hasByteToRead())
+            {
+                this->m_buffer.push(gpio.rx.read());
+            }
+
+            while(!m_outbound.empty())
+            {
+                gpio.tx.write(m_outbound.front());
+                m_outbound.pop();
+            }
+        }
+
+    private:
+        std::queue<Byte> m_outbound;
 
     } mutable usart {this};
 

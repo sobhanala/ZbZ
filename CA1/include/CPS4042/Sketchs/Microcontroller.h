@@ -4,10 +4,6 @@
 #include <CPS4042/Hardwares/Boards/Esp8266.h>
 #include <CPS4042/Hardwares/Sensors/VL530X.h>
 #include <CPS4042/Sketchs/AbstractSketch.h>
-#include <CPS4042/Utils/ByteStream.h>
-#include <CPS4042/Utils/Wave.h>
-#include <bitset>
-#include <deque>
 
 class MicroController : public AbstractSketch<Boards::Esp8266>
 {
@@ -21,8 +17,6 @@ public:
     {
         (void)gpio;
         std::cout << "esp8266 setup completed." << std::endl;
-        node()->i2c.init(Sensors::Vl530x::address);
-        delay(50);
         return 0;
     }
 
@@ -30,48 +24,30 @@ public:
     loop(Boards::Esp8266::Gpio& gpio) override
     {
         (void)gpio;
-        static std::deque<Byte> frameBuffer;
+        static UByte nextAddress {0};
+        static bool  waitingForResponse {false};
+        static UByte lastRequest {0};
 
-        while(node()->i2c.isDataAvailable())
+        if(!waitingForResponse)
         {
-            frameBuffer.push_back(node()->i2c.read());
+            auto request = static_cast<Byte>(nextAddress);
+            node()->usart.write(request);
+            lastRequest = nextAddress;
+            std::cout << "[USART] request address: 0x" << std::hex
+                      << static_cast<int>(lastRequest) << std::dec << std::endl;
+
+            waitingForResponse = true;
         }
 
-        while(frameBuffer.size() >= 3)
+        while(node()->usart.isDataAvailable())
         {
-            auto msb      = frameBuffer[0];
-            auto lsb      = frameBuffer[1];
-            auto checksum = frameBuffer[2];
+            auto data = static_cast<UByte>(node()->usart.read());
+            std::cout << "[USART] response address 0x" << std::hex
+                      << static_cast<int>(lastRequest) << " -> data 0x"
+                      << static_cast<int>(data) << std::dec << std::endl;
 
-            auto msbUnsigned = static_cast<UByte>(msb);
-            auto lsbUnsigned = static_cast<UByte>(lsb);
-            auto expectedChecksum =
-              static_cast<Byte>(msbUnsigned > lsbUnsigned
-                                  ? (msbUnsigned - lsbUnsigned)
-                                  : (lsbUnsigned - msbUnsigned));
-
-            if(checksum == expectedChecksum)
-            {
-                ByteStream<std::uint16_t> stream;
-                stream << msb;
-                stream << lsb;
-                auto distance = stream.take();
-
-                std::cout << "[I2C] valid measurement: " << distance
-                          << " (checksum: " << static_cast<int>(checksum)
-                          << ")" << std::endl;
-            }
-            else
-            {
-                std::cout << "[I2C] invalid frame: checksum mismatch (got "
-                          << static_cast<int>(checksum) << ", expected "
-                          << static_cast<int>(expectedChecksum) << ")"
-                          << std::endl;
-            }
-
-            frameBuffer.pop_front();
-            frameBuffer.pop_front();
-            frameBuffer.pop_front();
+            nextAddress++;    waitingForResponse = false;
+        
         }
 
         delay(10);

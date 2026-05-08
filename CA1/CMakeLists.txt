@@ -23,6 +23,7 @@ add_executable(CPS4042
     include/CPS4042/Units/BaudRate.h
     include/CPS4042/Hardwares/Boards/Esp8266.h
     include/CPS4042/Hardwares/Sensors/VL530X.h
+    include/CPS4042/Hardwares/Comm/Usb.h
     include/CPS4042/Globals/Object.h
     include/CPS4042/Sketchs/AbstractSketch.h
 
