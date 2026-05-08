@@ -2,8 +2,9 @@
 #define MICROCONTROLLER_H
 
 #include <CPS4042/Hardwares/Boards/Esp8266.h>
-#include <CPS4042/Hardwares/Sensors/VL530X.h>
 #include <CPS4042/Sketchs/AbstractSketch.h>
+#include <CPS4042/Utils/ByteStream.h>
+#include <deque>
 
 class MicroController : public AbstractSketch<Boards::Esp8266>
 {
@@ -24,30 +25,61 @@ public:
     loop(Boards::Esp8266::Gpio& gpio) override
     {
         (void)gpio;
-        static UByte nextAddress {0};
-        static bool  waitingForResponse {false};
-        static UByte lastRequest {0};
+        static UByte            nextChannel {0};
+        static bool             waitingForResponse {false};
+        static UByte            requestedChannel {0};
+        static std::deque<Byte> frameBuffer;
 
         if(!waitingForResponse)
         {
-            auto request = static_cast<Byte>(nextAddress);
-            node()->usart.write(request);
-            lastRequest = nextAddress;
-            std::cout << "[USART] request address: 0x" << std::hex
-                      << static_cast<int>(lastRequest) << std::dec << std::endl;
+            requestedChannel = nextChannel % 2;
+            node()->usart.write(static_cast<Byte>(requestedChannel));
+            std::cout << "[MUX] request channel: " << static_cast<int>(requestedChannel)
+                      << std::endl;
 
             waitingForResponse = true;
         }
 
         while(node()->usart.isDataAvailable())
         {
-            auto data = static_cast<UByte>(node()->usart.read());
-            std::cout << "[USART] response address 0x" << std::hex
-                      << static_cast<int>(lastRequest) << " -> data 0x"
-                      << static_cast<int>(data) << std::dec << std::endl;
+            frameBuffer.push_back(node()->usart.read());
+        }
 
-            nextAddress++;    waitingForResponse = false;
-        
+        if(waitingForResponse && frameBuffer.size() >= 3)
+        {
+            auto msb      = frameBuffer[0];
+            auto lsb      = frameBuffer[1];
+            auto checksum = frameBuffer[2];
+
+            auto msbUnsigned = static_cast<UByte>(msb);
+            auto lsbUnsigned = static_cast<UByte>(lsb);
+            auto expectedChecksum =
+              static_cast<Byte>(msbUnsigned > lsbUnsigned
+                                  ? (msbUnsigned - lsbUnsigned)
+                                  : (lsbUnsigned - msbUnsigned));
+
+            if(checksum == expectedChecksum)
+            {
+                ByteStream<std::uint16_t> stream;
+                stream << msb;
+                stream << lsb;
+                auto value = stream.take();
+
+                std::cout << "[MUX] channel " << static_cast<int>(requestedChannel)
+                          << " value: " << value << std::endl;
+            }
+            else
+            {
+                std::cout << "[MUX] channel " << static_cast<int>(requestedChannel)
+                          << " invalid checksum." << std::endl;
+            }
+
+            frameBuffer.pop_front();
+            frameBuffer.pop_front();
+            frameBuffer.pop_front();
+
+            waitingForResponse = false;
+            nextChannel++;
         }
 
         delay(10);

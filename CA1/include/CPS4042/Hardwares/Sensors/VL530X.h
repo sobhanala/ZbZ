@@ -77,7 +77,9 @@ public:
                 if(gpio.sda.hasByteToRead())
                 {
                     auto address = gpio.sda.read();
-                    if(address == static_cast<Byte>(static_cast<UByte>(Vl530x::address) << 1))
+                    auto shiftedAddress =
+                      static_cast<Byte>(static_cast<UByte>(Vl530x::address) << 1);
+                    if(address == Vl530x::address || address == shiftedAddress)
                     {
                         gpio.sda.write(Bit::One);
                         this->m_started = true;
