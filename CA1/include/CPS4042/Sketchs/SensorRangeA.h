@@ -43,6 +43,12 @@ public:
         gpio.sda.write(lsb);
         gpio.sda.write(checksum);
 
+        std::cout << "[I2C][TX][A] sensor generated value: " << value
+                  << " -> sent msb=" << static_cast<int>(msbUnsigned)
+                  << " lsb=" << static_cast<int>(lsbUnsigned)
+                  << " checksum=" << static_cast<int>(static_cast<UByte>(checksum))
+                  << std::endl;
+
         delay(20);
         return 0;
     }

@@ -36,6 +36,10 @@ public:
             waitingForPacket = true;
             packetBuffer.clear();
 
+            std::cout << "[MUX][RX] channel request: " << static_cast<int>(activeChannel)
+                      << " -> selecting i2c" << static_cast<int>(activeChannel)
+                      << std::endl;
+
             if(activeChannel == 0)
                 node()->i2c0.init(Sensors::Vl530x::address);
             else
@@ -74,9 +78,22 @@ public:
 
                 if(checksum == expectedChecksum)
                 {
+                    std::cout << "[MUX][RX] channel " << static_cast<int>(activeChannel)
+                              << " received valid packet: msb="
+                              << static_cast<int>(msbUnsigned)
+                              << " lsb=" << static_cast<int>(lsbUnsigned)
+                              << " checksum="
+                              << static_cast<int>(static_cast<UByte>(checksum))
+                              << std::endl;
+
                     node()->usart.write(msb);
                     node()->usart.write(lsb);
                     node()->usart.write(checksum);
+
+                    std::cout << "[MUX][TX] forwarded channel "
+                              << static_cast<int>(activeChannel)
+                              << " packet to microcontroller." << std::endl;
+
                     waitingForPacket = false;
                     packetBuffer.clear();
                 }
