@@ -28,12 +28,34 @@ public:
         while(node()->usart.isDataAvailable())
         {
             auto address = node()->usart.read();
+            std::cout << "[USART] received request for address 0x" << std::hex
+                      << static_cast<int>(static_cast<UByte>(address)) << std::dec
+                      << std::endl;
 
             auto it   = m_storage.find(address);
             auto data = static_cast<Byte>(0);
-            if(it != m_storage.end()) data = it->second;
+            if(it != m_storage.end())
+            {
+                data = it->second;
+                std::cout << "[USART] generated data 0x" << std::hex
+                          << static_cast<int>(static_cast<UByte>(data))
+                          << " for address 0x"
+                          << static_cast<int>(static_cast<UByte>(address))
+                          << std::dec << std::endl;
+            }
+            else
+            {
+                std::cout << "[USART] no data stored for address 0x" << std::hex
+                          << static_cast<int>(static_cast<UByte>(address))
+                          << ", sending 0x00" << std::dec << std::endl;
+            }
 
             node()->usart.write(data);
+            std::cout << "[USART] sent data 0x" << std::hex
+                      << static_cast<int>(static_cast<UByte>(data))
+                      << " for address 0x"
+                      << static_cast<int>(static_cast<UByte>(address)) << std::dec
+                      << std::endl;
         }
 
         delay(1);
