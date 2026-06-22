@@ -44,6 +44,12 @@ public:
         node()->i2c.write(lsb);
         node()->i2c.write(checksum);
 
+        std::cout << "[I2C][TX] sensor generated measurement: " << distance
+                  << " -> sent msb=" << static_cast<int>(static_cast<UByte>(msb))
+                  << " lsb=" << static_cast<int>(static_cast<UByte>(lsb))
+                  << " checksum=" << static_cast<int>(static_cast<UByte>(checksum))
+                  << std::endl;
+
         delay(25);
         return 0;
     }

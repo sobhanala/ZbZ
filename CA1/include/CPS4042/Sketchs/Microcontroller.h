@@ -57,13 +57,13 @@ public:
                 stream << lsb;
                 auto distance = stream.take();
 
-                std::cout << "[I2C] valid measurement: " << distance
+                std::cout << "[I2C][RX] valid measurement: " << distance
                           << " (checksum: " << static_cast<int>(checksum)
                           << ")" << std::endl;
             }
             else
             {
-                std::cout << "[I2C] invalid frame: checksum mismatch (got "
+                std::cout << "[I2C][RX] invalid frame: checksum mismatch (got "
                           << static_cast<int>(checksum) << ", expected "
                           << static_cast<int>(expectedChecksum) << ")"
                           << std::endl;
