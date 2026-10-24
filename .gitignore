@@ -1,0 +1,6 @@
+
+
+# Local development files
+/build/
+/cmake-build-*/
+.idea/
